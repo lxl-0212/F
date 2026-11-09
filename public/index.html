@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#1556a8">
-<title>芳和實中校園 AI 助理｜校務查詢</title>
+<title>校園 AI 助理｜校務查詢</title>
 <style>
 :root{color-scheme:light;--bg:#f4f7f6;--card:#fff;--primary:#315d72;--primary-dark:#25495b;--soft:#e8f1f4;--ink:#263640;--muted:#71818a;--line:#dce5e7;--success:#4f7f69;--shadow:0 12px 34px rgba(39,61,70,.075)}
 *{box-sizing:border-box}html{background:var(--bg)}
 body{margin:0;background:radial-gradient(circle at 8% 0%,rgba(184,207,216,.32),transparent 28%),linear-gradient(180deg,#eef3f2 0,#f7f9f8 360px,var(--bg) 100%);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans TC","PingFang TC",sans-serif;-webkit-font-smoothing:antialiased}
 main{width:min(1320px,100%);margin:auto;padding:24px 22px 38px}
 .hero{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:13px}.crest{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,var(--primary),var(--primary-dark));font-size:22px;box-shadow:0 8px 20px #315d7233}
-h1{font-size:clamp(1.3rem,3vw,1.75rem);letter-spacing:-.02em;margin:0;font-weight:760}.sub{margin:5px 0 0;color:var(--muted);font-size:.88rem}.status{white-space:nowrap;background:#edf6f1;color:var(--success);border:1px solid #d3e6dc;border-radius:999px;padding:7px 12px;font-size:.78rem;font-weight:650}
+h1{font-size:clamp(1.3rem,3vw,1.75rem);letter-spacing:-.02em;margin:0;font-weight:760}.sub{margin:5px 0 0;color:var(--muted);font-size:.88rem}.status{white-space:nowrap;background:#edf6f1;color:var(--success);border:1px solid #d3e6dc;border-radius:999px;padding:7px 12px;font-size:.78rem;font-weight:650}.status.ai-off{background:#fff6e8;color:#8b5d17;border-color:#eed9ad}
 .card{background:rgba(255,255,255,.95);border:1px solid rgba(210,222,225,.9);border-radius:20px;box-shadow:var(--shadow)}.chat{padding:19px}
 .welcome{padding:15px 16px;border:1px solid #d9e5e8;background:linear-gradient(135deg,#f7fbfa,#f2f7f7);border-radius:15px;margin-bottom:11px}.welcome strong{display:block;margin-bottom:5px;color:#304c59}.welcome span{color:var(--muted);font-size:.86rem;line-height:1.7}
 .mode{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:0 0 11px;padding:9px 11px;border:1px solid #e1e8e9;border-radius:12px;background:#fbfcfc}.mode-title{font-size:.78rem;font-weight:700;color:#60747d;margin-right:2px}.mode span:not(.mode-title){font-size:.75rem;color:#526872;background:#f1f5f5;border-radius:999px;padding:5px 9px}
@@ -27,51 +27,49 @@ label{display:block;font-weight:700;margin:11px 0 6px;color:#3a505a}textarea{dis
 <header class="hero">
   <div class="brand">
     <div class="crest" aria-hidden="true">🎓</div>
-    <div><h1>芳和實中校園 AI 助理</h1><p class="sub">臺北市芳和實驗中學｜校園公開資料 × MCP × AI 快速查詢</p></div>
+    <div><h1>校園 AI 助理</h1><p class="sub">校園公開資料 × MCP × AI 快速查詢</p></div>
   </div>
-  <div class="status">● 查詢服務</div>
+  <div class="status" id="serviceStatus">● 查詢服務</div>
 </header>
 
 <section class="card chat" aria-label="校務資料查詢">
-  <div class="welcome"><strong>今天想查什麼？</strong><span>AI 自然語言問答，不用先判斷處室，直接把問題告訴我；明確的校務資料會查校方資料，一般開放問題則交給 AI 理解與回答。</span></div>
+  <div class="welcome"><strong>今天想查什麼？</strong><span>用平常說話的方式提問就可以。查校務時，我會先找校方公開資料，再用簡單清楚的方式回答並附上來源；也可以問一般問題。</span></div>
   <div class="mode" aria-label="查詢模式"><span class="mode-title">查詢模式</span><span>📚 法規／規定 → 附來源</span><span>🏫 校務資料 → MCP 快查</span><span>💬 開放問題 → AI 理解</span></div>
   <div id="log" role="log" aria-live="polite" aria-label="對話紀錄"></div>
 
   <section class="helper" aria-label="查詢小幫手">
-    <h2>🔎 查詢小幫手</h2>
-    <p class="helper-note">點選後會帶入自然語言問題範例；可直接送出，也可以先修改內容。</p>
+    <h2>🔎 快速提問</h2>
+    <p class="helper-note">點選標籤會帶入一個口語問題，按「送出」即可查詢；也能先改成你自己的問法。</p>
     <div class="examples" aria-label="查詢小幫手提問分類">
-      <button type="button" data-query="請查芳和實中的教師聯絡資料">👨‍🏫 老師</button>
-      <button type="button" data-query="芳和實中教室或場館的分機是多少？">☎️ 分機</button>
-      <button type="button" data-query="請列出 12 月行事曆的重點">📅 行事曆</button>
-      <button type="button" data-query="生病不能到校時要怎麼請假？">📝 請假</button>
-      <button type="button" data-query="學生哪些行為可能會被記過或嘉獎？">🏆 獎懲</button>
-      <button type="button" data-query="學生上課時可以使用手機嗎？">📱 行動載具</button>
+      <button type="button" data-query="這學期有哪些重要校務行程？">📅 行事曆</button>
+      <button type="button" data-query="最近學校有哪些重要公告？">📢 近期公告</button>
+      <button type="button" data-query="新生入學資訊要去哪裡看？">🎒 新生入學</button>
+      <button type="button" data-query="學生專區有哪些學習資源？">📚 學生資源</button>
+      <button type="button" data-query="課程發展中心最近有哪些活動？">🧭 課程活動</button>
+      <button type="button" data-query="可以簡單介紹一下學校特色嗎？">🏫 認識學校</button>
     </div>
-    <div class="group-title">📚 教務與學習</div>
+    <div class="group-title">💬 你也可以這樣問</div>
     <div class="examples" aria-label="教務與學習提問範例">
-      <button type="button" data-query="段考補考規定和申請表在哪裡？">📝 段考／補考</button>
-      <button type="button" data-query="學期成績 40 分可以補考嗎？">📋 成績／評量</button>
-      <button type="button" data-query="成績不及格時，重修和補修有什麼不同？">📚 重修／補修</button>
-      <button type="button" data-query="各科畢業需要修滿多少學分？">🎓 學分／畢業</button>
-      <button type="button" data-query="學習歷程怎麼做，才能清楚呈現自己的學習和科系連結？">🗂 學習歷程</button>
-      <button type="button" data-query="病假返校後幾天內要完成補請假？">📌 學務法規</button>
+      <button type="button" data-query="我想找學校最近的活動消息。">🎉 校園活動</button>
+      <button type="button" data-query="學校有哪些升學資訊可以參考？">🎓 升學資訊</button>
+      <button type="button" data-query="我想了解學校有哪些行政單位。">🏢 行政單位</button>
     </div>
   </section>
 
   <label for="msg">輸入問題</label>
-  <textarea id="msg" placeholder="例如：段考沒參加，可以申請補考嗎？"></textarea>
+  <textarea id="msg" placeholder="例如：我想找學校最近的活動消息，或用自己的話問任何問題"></textarea>
   <div class="actions">
     <span class="hint">可以繼續追問，AI 會保留本次對話脈絡</span>
     <div><button id="clear" class="clear" type="button">清除</button> <button id="send" type="button">送出　➜</button></div>
   </div>
 </section>
-<footer>資料以校方公開文件為基礎；明確校務查詢會優先使用校方資料，開放性問題則交由 AI 進行一般理解與回答。法規、考試與辦理期限如有更新，請以校方最新公告及正式文件為準。</footer>
+<footer>校務回答會參考校方公開資料並附上來源。若資料中沒有答案，助理會說明目前查不到，不會自行猜測。法規與辦理期限請以校方最新公告及正式文件為準。</footer>
 </main>
 
 <script>
 const logEl=document.getElementById('log'),msgEl=document.getElementById('msg'),sendBtn=document.getElementById('send');
 const messages=[];
+fetch('./healthz').then(r=>r.ok?r.json():null).then(s=>{if(!s)return;const el=document.getElementById('serviceStatus');el.classList.toggle('ai-off',!s.aiReady);el.textContent=s.aiReady?'● AI 對話與校務查詢就緒':'● 校務查詢就緒（AI 對話未設定）';el.title=s.aiReady?'可以自然語言對話並查詢校方資料':'請管理者在 Render 設定 OPENAI_API_KEY 或 GEMINI_API_KEY，啟用自然語言回答'}).catch(()=>{});
 function appendTextWithLinks(parent,text){
  const pattern=/\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;let last=0,m;
  while((m=pattern.exec(text))!==null){
@@ -85,7 +83,7 @@ function appendTextWithLinks(parent,text){
 }
 function render(role,text){
  const div=document.createElement('div');div.className='msg '+role;
- const meta=document.createElement('div');meta.className='meta';meta.textContent=role==='user'?'使用者':'芳和實中 AI 助理';
+ const meta=document.createElement('div');meta.className='meta';meta.textContent=role==='user'?'使用者':'校園 AI 助理';
  let content=String(text??'');
  if(role==='assistant')content=content.replace(/&#x([\da-f]{1,6});/gi,(_,hex)=>{const n=parseInt(hex,16);return n<=0x10ffff?String.fromCodePoint(n):''}).replace(/&#(\d{1,7});/g,(_,num)=>{const n=Number(num);return n<=0x10ffff?String.fromCodePoint(n):''});
  div.appendChild(meta);appendTextWithLinks(div,content);logEl.appendChild(div);logEl.scrollTop=logEl.scrollHeight;

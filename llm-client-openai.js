@@ -2,15 +2,20 @@ import OpenAI from 'openai';
 
 const SCHOOL = '臺北市芳和實驗中學';
 const HOME = 'https://www.fhehs.tp.edu.tw/';
-const SYSTEM = `你是${SCHOOL}的校園 AI 助理。使用繁體中文，回答自然、簡潔、有禮貌。學校制度、人員、分機、行事曆和校園資訊，只能依據提供的芳和官方資料，不要猜測。先清楚回答問題，再列出必要步驟；只在資料有提供時附上正式來源。找不到依據時，明確說目前找不到可以直接支持問題的校方資料。一般開放問題可提供一般資訊，但要和校方規定清楚區分。`;
+const SYSTEM = `你是${SCHOOL}的校園 AI 助理，主要服務國高中學生。使用繁體中文，像耐心的老師一樣用簡單、自然、清楚的話回答。先直接回答學生真正想知道的事；必要時用短句或步驟說明，遇到校方術語要順手解釋。學生問「怎麼辦」或日常情境時，給可執行的重點，不要把法規原文、文件標題或整段搜尋結果直接貼上，也不要每題都回答成法規摘要。只有學生明確問規定、條文或正式依據時，才簡短說明相關規定。學校制度、人員、分機、行事曆和校園資訊只能依據提供的官方資料，不可猜測；資料不足時坦白說目前查不到，並提供最相關的官方來源。一般開放問題正常對話回答，不要硬套校規。校務回答結尾要附「🔗 資料來源」及工具提供的官方連結。`;
 
 function parse(raw) { try { return JSON.parse(raw); } catch { return {}; } }
 function fallbackNatural(raw) {
   const data = parse(raw);
   const rows = Array.isArray(data.結果) ? data.結果 : [];
   if (!rows.length) return `${data.錯誤 || '目前找不到可以直接支持這個問題的校方資料。'}\n\n🔗 資料來源\n• ${data.官方首頁 || HOME}`;
-  const body = rows.map(item => `${item.標題 ? `【${item.標題}】\n` : ''}${item.原文摘錄 || ''}${item.官方來源 ? `\n來源：${item.官方來源}` : ''}`).join('\n\n');
-  return `${body}\n\n🔗 資料來源\n• ${data.官方首頁 || HOME}`;
+  const body = rows.slice(0, 3).map(item => {
+    const excerpt = String(item.原文摘錄 || '').replace(/\s+/g, ' ').trim();
+    const shortExcerpt = excerpt.length > 420 ? `${excerpt.slice(0, 417)}…` : excerpt;
+    return `• ${item.標題 || '校方資料'}${shortExcerpt ? `\n  ${shortExcerpt}` : ''}`;
+  }).join('\n');
+  const sources = [...new Set(rows.slice(0, 3).map(item => item.官方來源).filter(Boolean))];
+  return `我從校方公開資料找到以下相關資訊：\n${body}\n\n若你想問更具體的情況，可以直接接著描述。\n\n🔗 資料來源\n${(sources.length ? sources : [data.官方首頁 || HOME]).map(url => `• ${url}`).join('\n')}`;
 }
 function addSources(answer, raw) {
   const data = parse(raw);
@@ -39,8 +44,11 @@ export class OpenAILLMClient {
       : latest;
     const raw = forceTool ? await this.mcp.callTool('search_school_info', { query }) : null;
     if (!this.enabled) {
-      const result = raw ?? await this.mcp.callTool('search_school_info', { query });
-      const answer = fallbackNatural(result);
+      if (!raw) {
+        const answer = '我目前可以查找校方公開資料，但自然語言整理功能尚未設定 AI 服務。管理者需要在 Render 設定 OPENAI_API_KEY（或 GEMINI_API_KEY）後，才能用對話方式回答一般問題。';
+        return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
+      }
+      const answer = fallbackNatural(raw);
       return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
     }
     const history = [{ role: 'system', content: SYSTEM }, ...messages.map(m => ({
