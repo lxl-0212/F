@@ -38,11 +38,31 @@ def fetch_html(url):
     return BeautifulSoup(r.text, "html.parser"), r
 
 def html_record(url, soup):
-    title = clean_text(soup.title.get_text(" ", strip=True) if soup.title else url)
-    for x in soup(["script","style","noscript"]):
+    for x in soup(["script", "style", "noscript", "nav", "header", "footer", "aside", "form"]):
         x.decompose()
-    text = clean_text(soup.get_text(" ", strip=True))
-    return {"title":title, "text":text[:120000], "url":url, "type":"web"}
+
+    # Prefer the article/body container so navigation, sidebars and site-wide
+    # footer links do not drown out the page the student actually asked about.
+    main = None
+    for selector in (
+        "article", ".entry-content", ".post-content", ".article-content",
+        "[role='main']", "main", "#content", ".main-content",
+    ):
+        candidate = soup.select_one(selector)
+        if candidate and len(candidate.get_text(" ", strip=True)) >= 80:
+            main = candidate
+            break
+    if main is None:
+        main = soup.body or soup
+
+    for selector in (".breadcrumb", ".breadcrumbs", ".sidebar", ".related", ".share", ".pagination"):
+        for x in main.select(selector):
+            x.decompose()
+
+    heading = main.find(["h1", "h2"])
+    title = clean_text(heading.get_text(" ", strip=True) if heading else (soup.title.get_text(" ", strip=True) if soup.title else url))
+    text = clean_text(main.get_text(" ", strip=True))
+    return {"title":title, "text":text[:24000], "url":url, "type":"web"}
 
 def main():
     queue = list(SEEDS)
