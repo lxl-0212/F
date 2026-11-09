@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#1556a8">
-<title>芳和實中校園 AI 助理｜校務查詢</title>
+<title>校園 AI 助理｜校務查詢</title>
 <style>
 :root{color-scheme:light;--bg:#f4f7f6;--card:#fff;--primary:#315d72;--primary-dark:#25495b;--soft:#e8f1f4;--ink:#263640;--muted:#71818a;--line:#dce5e7;--success:#4f7f69;--shadow:0 12px 34px rgba(39,61,70,.075)}
 *{box-sizing:border-box}html{background:var(--bg)}
@@ -27,7 +27,7 @@ label{display:block;font-weight:700;margin:11px 0 6px;color:#3a505a}textarea{dis
 <header class="hero">
   <div class="brand">
     <div class="crest" aria-hidden="true">🎓</div>
-    <div><h1>芳和實中校園 AI 助理</h1><p class="sub">臺北市芳和實驗中學｜校園公開資料 × MCP × AI 快速查詢</p></div>
+    <div><h1>校園 AI 助理</h1><p class="sub">校園公開資料 × MCP × AI 快速查詢</p></div>
   </div>
   <div class="status">● 查詢服務</div>
 </header>
@@ -85,7 +85,7 @@ function appendTextWithLinks(parent,text){
 }
 function render(role,text){
  const div=document.createElement('div');div.className='msg '+role;
- const meta=document.createElement('div');meta.className='meta';meta.textContent=role==='user'?'使用者':'芳和實中 AI 助理';
+ const meta=document.createElement('div');meta.className='meta';meta.textContent=role==='user'?'使用者':'校園 AI 助理';
  let content=String(text??'');
  if(role==='assistant')content=content.replace(/&#x([\da-f]{1,6});/gi,(_,hex)=>{const n=parseInt(hex,16);return n<=0x10ffff?String.fromCodePoint(n):''}).replace(/&#(\d{1,7});/g,(_,num)=>{const n=Number(num);return n<=0x10ffff?String.fromCodePoint(n):''});
  div.appendChild(meta);appendTextWithLinks(div,content);logEl.appendChild(div);logEl.scrollTop=logEl.scrollHeight;
