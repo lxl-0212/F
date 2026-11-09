@@ -13,7 +13,7 @@ const mcp = new MCPClient();
 const llm = new OpenAILLMClient(mcp);
 let mcpError = null;
 
-const SCHOOL = /分機|電話|教室|場館|老師|教師|主任|組長|職稱|單位|姓名|行事曆|行程|校規|規定|法規|條文|請假|行動載具|手機|獎懲|成績|考試|補考|學分|畢業|編班|轉班|抵免|學習歷程|班級/;
+const SCHOOL = /校務|校園|學生專區|老師|教師|主任|組長|職稱|姓名|分機|電話|教室|場館|行事曆|行程|公告|校園活動|活動消息|課程發展|升學|新生|入學|行政單位|社團|外展|探索|學校特色|學校簡介|校規|規定|法規|條文|請假|行動載具|手機|獎懲|成績|考試|補考|學分|畢業|編班|轉班|抵免|班級|學生手冊/;
 const FOLLOW_UP = /^(那|那麼|他|她|這位|這個|另外|還有|同一個|該).{0,30}/;
 const MONTH_QUERY = /(?:\d{1,2}|[一二三四五六七八九十]{1,3})月/;
 const SHORT_LOOKUP = /^[\p{Script=Han}]{2,4}$/u;
@@ -21,7 +21,7 @@ const ROOM_CODE_QUERY = /^(?:\d+[a-z]|[a-z]\d+)$/i;
 const GREETINGS = new Set(['你好','您好','謝謝','早安','午安','晚安','哈囉','嗨']);
 
 app.get('/healthz', (req, res) => {
-  res.json({ ok: true, mcpReady: mcp.ready, mcpTools: mcp.tools.map(x => x.name), mcpError });
+  res.json({ ok: true, mcpReady: mcp.ready, aiReady: llm.enabled, mcpTools: mcp.tools.map(x => x.name), mcpError });
 });
 
 app.post('/chat', async (req, res) => {

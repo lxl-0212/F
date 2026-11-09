@@ -1,22 +1,38 @@
 import OpenAI from 'openai';
 
-const SCHOOL = '臺北市芳和實驗中學';
 const HOME = 'https://www.fhehs.tp.edu.tw/';
-const SYSTEM = `你是${SCHOOL}的校園 AI 助理。使用繁體中文，回答自然、簡潔、有禮貌。學校制度、人員、分機、行事曆和校園資訊，只能依據提供的芳和官方資料，不要猜測。先清楚回答問題，再列出必要步驟；只在資料有提供時附上正式來源。找不到依據時，明確說目前找不到可以直接支持問題的校方資料。一般開放問題可提供一般資訊，但要和校方規定清楚區分。`;
+const SYSTEM = `你是校園 AI 小幫手，主要服務國高中學生。請用繁體中文，語氣親切、溫暖但不囉嗦，像耐心的老師一樣回答。不要在自我介紹或回答中使用學校名稱當作助理名稱。校務問題先用一句話直接回答，再視需要補充最多兩個重點；一般不超過 3 句短句（來源區除外）。避免公文腔、艱深詞和長篇說明；遇到必要的校方術語，立刻用白話解釋。學生問「怎麼辦」或日常情境時，說清楚下一步，不要把法規原文、文件標題或整段搜尋結果貼上，也不要每題都回答成法規摘要。只有學生明確問規定、條文或正式依據時，才簡短說明相關規定。校務資訊只能依據提供的官方資料，不可猜測；資料不足時親切地說目前查不到，並提供最相關的官方來源。一般開放問題正常對話回答，不要硬套校規。校務回答結尾要附「🔗 資料來源」及工具提供的官方連結。`;
 
 function parse(raw) { try { return JSON.parse(raw); } catch { return {}; } }
+function conciseAnswer(value, limit = 260) {
+  const text = String(value || '').replace(/\n*🔗\s*資料來源[\s\S]*$/i, '').trim();
+  if (text.length <= limit) return text;
+  const sentences = text.split(/(?<=[。！？])/).map(part => part.trim()).filter(Boolean);
+  let answer = '';
+  for (const sentence of sentences.slice(0, 3)) {
+    if (answer.length + sentence.length > limit) break;
+    answer += sentence;
+  }
+  if (!answer) answer = `${text.slice(0, limit - 1).trimEnd()}…`;
+  return answer;
+}
 function fallbackNatural(raw) {
   const data = parse(raw);
   const rows = Array.isArray(data.結果) ? data.結果 : [];
-  if (!rows.length) return `${data.錯誤 || '目前找不到可以直接支持這個問題的校方資料。'}\n\n🔗 資料來源\n• ${data.官方首頁 || HOME}`;
-  const body = rows.map(item => `${item.標題 ? `【${item.標題}】\n` : ''}${item.原文摘錄 || ''}${item.官方來源 ? `\n來源：${item.官方來源}` : ''}`).join('\n\n');
-  return `${body}\n\n🔗 資料來源\n• ${data.官方首頁 || HOME}`;
+  const useful = rows.find(item => !/網站導覽|網站操作指南|responsive web design|網站地圖/i.test(String(item.標題 || '') + String(item.原文摘錄 || '')));
+  if (!useful) return `我目前查不到這題的可靠資料，先不亂猜。你可以問導師確認；也可以換個說法再問我。\n\n🔗 資料來源\n• [官方網站](${data.官方首頁 || HOME})`;
+  const excerpt = String(useful.原文摘錄 || '').replace(/\s+/g, ' ').trim();
+  const shortExcerpt = excerpt.length > 100 ? `${excerpt.slice(0, 97)}…` : excerpt;
+  const url = useful.官方來源 || data.官方首頁 || HOME;
+  return `我找到一筆可能相關的官方資料${shortExcerpt ? `：${shortExcerpt}` : '，點下方連結可以查看內容'}。如果不是你要找的，告訴我更具體的情況，我再幫你找。\n\n🔗 資料來源\n• [查看官方資料](${url})`;
 }
 function addSources(answer, raw) {
   const data = parse(raw);
-  const urls = [...new Set([...(data.結果 || []).map(x => x?.官方來源), data.官方首頁].filter(Boolean))];
-  if (!urls.length || answer.includes('資料來源')) return answer;
-  return `${answer}\n\n🔗 資料來源\n${urls.map(url => `• ${url}`).join('\n')}`;
+  const resultUrls = (data.結果 || []).map(x => x?.官方來源).filter(Boolean);
+  const urls = [...new Set(resultUrls.length ? resultUrls : [data.官方首頁].filter(Boolean))];
+  if (!urls.length) return answer;
+  const cleanAnswer = String(answer || '').replace(/\n*🔗\s*資料來源[\s\S]*$/i, '').trim();
+  return `${cleanAnswer}\n\n🔗 資料來源\n${urls.slice(0, 2).map(url => `• ${url}`).join('\n')}`;
 }
 
 export class OpenAILLMClient {
@@ -39,8 +55,11 @@ export class OpenAILLMClient {
       : latest;
     const raw = forceTool ? await this.mcp.callTool('search_school_info', { query }) : null;
     if (!this.enabled) {
-      const result = raw ?? await this.mcp.callTool('search_school_info', { query });
-      const answer = fallbackNatural(result);
+      if (!raw) {
+        const answer = '我現在還不能自然對話。請管理者在 Render 開啟 AI 服務，之後我就能用簡單的方式回答你。';
+        return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
+      }
+      const answer = fallbackNatural(raw);
       return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
     }
     const history = [{ role: 'system', content: SYSTEM }, ...messages.map(m => ({
@@ -52,7 +71,7 @@ export class OpenAILLMClient {
       history[lastUser].content = `${history[lastUser].content}\n\n芳和官方資料（只依據這些資料回答）：\n${raw}`;
       try {
         const completion = await this.openai.chat.completions.create({ model: this.model, messages: history, max_tokens: 1200 });
-        const answer = addSources(String(completion.choices?.[0]?.message?.content || '') || fallbackNatural(raw), raw);
+        const answer = addSources(conciseAnswer(String(completion.choices?.[0]?.message?.content || '') || fallbackNatural(raw)), raw);
         return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
       } catch (error) {
         console.error(`[LLM SCHOOL FALLBACK] ${error.message || error}`);
@@ -65,7 +84,7 @@ export class OpenAILLMClient {
       const msg = first.choices?.[0]?.message || {};
       history.push(msg);
       if (!msg.tool_calls?.length) {
-        const answer = String(msg.content || '');
+        const answer = conciseAnswer(String(msg.content || ''));
         return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
       }
       for (const call of msg.tool_calls) {
@@ -74,8 +93,12 @@ export class OpenAILLMClient {
         history.push({ role: 'tool', tool_call_id: call.id, content: result });
       }
       const final = await this.openai.chat.completions.create({ model: this.model, messages: history, max_tokens: 1200 });
-      let answer = String(final.choices?.[0]?.message?.content || '');
-      for (const item of history.filter(x => x.role === 'tool')) answer = addSources(answer, item.content);
+      let answer = conciseAnswer(String(final.choices?.[0]?.message?.content || ''));
+      const toolSources = history.filter(x => x.role === 'tool').flatMap(item => {
+        const data = parse(item.content);
+        return [...(data.結果 || []).map(x => x?.官方來源), data.官方首頁].filter(Boolean);
+      });
+      answer = addSources(answer, JSON.stringify({結果:toolSources.map(官方來源=>({官方來源}))}));
       return { reply: answer, messages: [...messages, { role: 'assistant', content: answer }] };
     } catch (error) {
       console.error(`[LLM FALLBACK] ${error.message || error}`);
